@@ -91,11 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = true
-
---Custom: changing tab width
-vim.opt.tabstop = 2
-vim.opt.shiftwidth = 2
+vim.g.have_nerd_font = false
 
 -- [[ Setting options ]]
 -- See `:help vim.o`
@@ -360,15 +356,7 @@ require('lazy').setup({
       },
     },
   },
-  {
-    'numToStr/Comment.nvim',
-    dependencies = 'JoosepAlviste/nvim-ts-context-commentstring',
-    config = function()
-      require('Comment').setup {
-        pre_hook = require('ts_context_commentstring.integrations.comment_nvim').create_pre_hook(),
-      }
-    end,
-  },
+
   -- NOTE: Plugins can specify dependencies.
   --
   -- The dependencies are proper plugin specifications as well - anything
@@ -704,13 +692,7 @@ require('lazy').setup({
         -- ts_ls = {},
         --
 
-        clangd = {
-          on_attach = function(client, bufnr)
-            client.server_capabilities.signatureHelpProvider = false
-            on_attach(client, bufnr)
-          end,
-          capabilities = capabilities,
-        },
+        clangd = {},
         lua_ls = {
           -- cmd = { ... },
           -- filetypes = { ... },
@@ -755,12 +737,12 @@ require('lazy').setup({
       -- You can add other tools here that you want Mason to install
       -- for you, so that they are available from within Neovim.
       local ensure_installed = vim.tbl_keys(servers or {})
-      --vim.list_extend(ensure_installed, {
-      --'stylua', -- Used to format Lua code
-      --})
+      vim.list_extend(ensure_installed, {
+        'stylua', -- Used to format Lua code
+      })
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
-      -- require('java').setup {}
+      require('java').setup {}
 
       require('mason-lspconfig').setup {
         ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
