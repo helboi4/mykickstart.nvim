@@ -398,6 +398,117 @@ require('lazy').setup({
     end
   },
   {
+    'mfussenegger/nvim-dap',
+    dependencies = {
+      'rcarriga/nvim-dap-ui',
+      'theHamsta/nvim-dap-virtual-text',
+      'nvim-neotest/nvim-nio',
+    },
+    config = function()
+      local dap = require('dap')
+      local dapui = require('dapui')
+
+      -- Setup dap-ui
+      dapui.setup()
+
+      -- Setup virtual text
+      require('nvim-dap-virtual-text').setup()
+
+      -- Java Debug Adapter configuration
+      -- This uses the java-debug-adapter you already have installed via Mason
+      dap.adapters.java = function(callback)
+        local jar_path = vim.fn.glob(vim.fn.expand(
+        '~/.local/share/nvim/mason/packages/java-debug-adapter/extension/server/com.microsoft.java.debug.plugin-*.jar'))
+
+        callback({
+          type = 'server',
+          host = '127.0.0.1',
+          port = 5005,
+          executable = {
+            command = vim.fn.expand('~/.local/share/nvim/mason/bin/jdtls'),
+            args = {
+              '-configuration', vim.fn.expand('~/.cache/jdtls/config'),
+              '-data', vim.fn.expand('~/.cache/jdtls/workspace'),
+              '-jar', jar_path,
+            },
+          },
+        })
+      end
+
+      -- Java debug configurations
+      dap.configurations.java = {
+        {
+          type = 'java',
+          request = 'launch',
+          name = 'Debug (Launch) - Current File',
+          mainClass = function()
+            -- Try to find the main class in the current file
+            local lines = vim.api.nvim_buf_get_lines(0, 0, -1, false)
+            for _, line in ipairs(lines) do
+              local match = line:match('class%s+([%w_]+)')
+              if match and line:match('public%s+static%s+void%s+main') then
+                return match
+              end
+            end
+            -- Fallback to filename without extension
+            return vim.fn.expand('%:t:r')
+          end,
+          projectRoot = vim.fn.getcwd(),
+          classPaths = {},
+          modulePaths = {},
+        },
+        {
+          type = 'java',
+          request = 'attach',
+          name = 'Debug (Attach) - Remote',
+          hostName = '127.0.0.1',
+          port = 5005,
+        },
+      }
+
+      -- Debug keymaps
+      vim.keymap.set('n', '<Leader>db', dap.toggle_breakpoint, { desc = 'Debug: Toggle Breakpoint' })
+      vim.keymap.set('n', '<Leader>dB', function()
+        dap.set_breakpoint(vim.fn.input('Breakpoint condition: '))
+      end, { desc = 'Debug: Set Conditional Breakpoint' })
+      vim.keymap.set('n', '<Leader>dc', dap.continue, { desc = 'Debug: Start/Continue' })
+      vim.keymap.set('n', '<Leader>di', dap.step_into, { desc = 'Debug: Step Into' })
+      vim.keymap.set('n', '<Leader>do', dap.step_over, { desc = 'Debug: Step Over' })
+      vim.keymap.set('n', '<Leader>dO', dap.step_out, { desc = 'Debug: Step Out' })
+      vim.keymap.set('n', '<Leader>dr', dap.repl.toggle, { desc = 'Debug: Toggle REPL' })
+      vim.keymap.set('n', '<Leader>dl', dap.run_last, { desc = 'Debug: Run Last' })
+      vim.keymap.set('n', '<Leader>dt', dap.terminate, { desc = 'Debug: Terminate' })
+
+      -- DAP UI keymaps
+      vim.keymap.set('n', '<Leader>du', dapui.toggle, { desc = 'Debug: Toggle UI' })
+      vim.keymap.set('n', '<Leader>de', dapui.eval, { desc = 'Debug: Evaluate Expression' })
+
+      -- Auto open/close DAP UI when debugging starts/stops
+      dap.listeners.after.event_initialized['dapui_config'] = function()
+        dapui.open()
+      end
+      dap.listeners.before.event_terminated['dapui_config'] = function()
+        dapui.close()
+      end
+      dap.listeners.before.event_exited['dapui_config'] = function()
+        dapui.close()
+      end
+
+      -- Add Java-specific functionality when in Java files
+      vim.api.nvim_create_autocmd('FileType', {
+        pattern = 'java',
+        callback = function()
+          -- Java run keymap (compile and run current file)
+          vim.keymap.set('n', '<leader>jr', function()
+            local file = vim.fn.expand('%:t:r')
+            local dir = vim.fn.expand('%:p:h')
+            vim.cmd('terminal cd ' .. dir .. ' && javac *.java && java ' .. file)
+          end, { desc = '[J]ava [R]un', buffer = true })
+        end,
+      })
+    end,
+  },
+  {
     "yetone/avante.nvim",
     -- if you want to build from source then do `make BUILD_FROM_SOURCE=true`
     -- ⚠️ must add this setting! ! !
