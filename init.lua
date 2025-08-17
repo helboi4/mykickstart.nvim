@@ -865,9 +865,7 @@ require('lazy').setup({
             server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
             require('lspconfig')[server_name].setup(server)
           end,
-        },
-        ensure_installed = ensure_installed,
-        automatic_installation = true,
+        }
       }
     end,
   },
