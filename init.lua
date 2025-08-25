@@ -418,7 +418,7 @@ require('lazy').setup({
       -- This uses the java-debug-adapter you already have installed via Mason
       dap.adapters.java = function(callback)
         local jar_path = vim.fn.glob(vim.fn.expand(
-        '~/.local/share/nvim/mason/packages/java-debug-adapter/extension/server/com.microsoft.java.debug.plugin-*.jar'))
+          '~/.local/share/nvim/mason/packages/java-debug-adapter/extension/server/com.microsoft.java.debug.plugin-*.jar'))
 
         callback({
           type = 'server',
@@ -495,16 +495,72 @@ require('lazy').setup({
       end
 
       -- Add Java-specific functionality when in Java files
+      -- Replace the Java autocmd section with this enhanced version:
       vim.api.nvim_create_autocmd('FileType', {
         pattern = 'java',
         callback = function()
-          -- Java run keymap (compile and run current file)
+          -- Function to check if we're in a Maven project
+          local function is_maven_project()
+            return vim.fn.filereadable(vim.fn.getcwd() .. '/pom.xml') == 1
+          end
+
+          -- Function to check if we're in a Gradle project
+          local function is_gradle_project()
+            return vim.fn.filereadable(vim.fn.getcwd() .. '/build.gradle') == 1 or
+                vim.fn.filereadable(vim.fn.getcwd() .. '/build.gradle.kts') == 1
+          end
+
+          -- Enhanced Java run keymap
           vim.keymap.set('n', '<leader>jr', function()
-            local file = vim.fn.expand('%:t:r')
-            local dir = vim.fn.expand('%:p:h')
-            vim.cmd('terminal cd ' .. dir .. ' && javac *.java && java ' .. file)
+            if is_maven_project() then
+              -- Maven project - compile and run
+              local main_class = vim.fn.input('Main class (e.g., com.example.Main): ')
+              if main_class and main_class ~= '' then
+                vim.cmd('terminal mvn compile exec:java -Dexec.mainClass="' .. main_class .. '"')
+              else
+                vim.cmd('terminal mvn compile')
+              end
+            elseif is_gradle_project() then
+              -- Gradle project
+              vim.cmd('terminal ./gradlew run')
+            else
+              -- Plain Java files - original behavior
+              local file = vim.fn.expand('%:t:r')
+              local dir = vim.fn.expand('%:p:h')
+              vim.cmd('terminal cd ' .. dir .. ' && javac *.java && java ' .. file)
+            end
           end, { desc = '[J]ava [R]un', buffer = true })
-        end,
+
+          -- Maven-specific commands
+          if is_maven_project() then
+            vim.keymap.set('n', '<leader>jc', function()
+              vim.cmd('terminal mvn clean compile')
+            end, { desc = '[J]ava [C]lean compile', buffer = true })
+
+            vim.keymap.set('n', '<leader>jt', function()
+              vim.cmd('terminal mvn test')
+            end, { desc = '[J]ava [T]est', buffer = true })
+
+            vim.keymap.set('n', '<leader>jp', function()
+              vim.cmd('terminal mvn package')
+            end, { desc = '[J]ava [P]ackage', buffer = true })
+
+            vim.keymap.set('n', '<leader>jd', function()
+              vim.cmd('terminal mvn dependency:resolve')
+            end, { desc = '[J]ava [D]ependencies', buffer = true })
+          end
+
+          -- Gradle-specific commands
+          if is_gradle_project() then
+            vim.keymap.set('n', '<leader>jc', function()
+              vim.cmd('terminal ./gradlew clean build')
+            end, { desc = '[J]ava [C]lean build', buffer = true })
+
+            vim.keymap.set('n', '<leader>jt', function()
+              vim.cmd('terminal ./gradlew test')
+            end, { desc = '[J]ava [T]est', buffer = true })
+          end
+        end
       })
     end,
   },
